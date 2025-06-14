@@ -7,19 +7,22 @@ import bronzeTrophy from '../assets/bronze-trophy.png';
 const Leaderboard = () => {
     const [leaderboard, setLeaderboard] = useState([]);
 
-    useEffect(() => {
-        const fetchLeaderboard = async () => {
-            try {
-                const response = await axios.get('http://localhost:5000/results');
-                const sortedData = response.data.sort((a, b) => b.WPM - a.WPM);
-                setLeaderboard(sortedData);
-            } catch (err) {
-                console.error('Error fetching leaderboard:', err);
-            }
-        };
+useEffect(() => {
+    const fetchLeaderboard = async () => {
+        try {
+            const response = await axios.get('https://typing-jv5m.onrender.com/results');
+            const sortedData = response.data.sort((a, b) => b.WPM - a.WPM);
+            setLeaderboard(sortedData);
+        } catch (err) {
+            console.error('Error fetching leaderboard:', err);
+        }
+    };
 
-        fetchLeaderboard();
-    }, []);
+    fetchLeaderboard();
+}, []);
+
+
+
 
     const getTrophyImage = (rank) => {
         switch (rank) {
