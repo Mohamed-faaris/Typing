@@ -2,10 +2,11 @@
   "name": "typing-app",
   "version": "1.0.0",
   "scripts": {
-    "start": "node backend/server.js",
-    "client": "cd frontend && npm run dev",
-    "build": "cd frontend && npm run build"
-  },
+  "start": "node backend/server.js",
+  "build": "cd frontend && npm install && npm run build"
+},
+ 
+
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
