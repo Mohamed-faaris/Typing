@@ -1,1 +1,5 @@
+# Ignore environment files for security
 .env
+.env.*
+secure.env
+secure.env.*
