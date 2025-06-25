@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -25,11 +25,6 @@ const TypingTest = ({ username }) => {
   const [WPM, setWPM] = useState(0);
   const [CPM, setCPM] = useState(0);
   const [typingDuration, setTypingDuration] = useState(0);
-  const inpRef = useRef(null);
-
-  useEffect(() => {
-    if (inpRef.current) inpRef.current.focus();
-  }, []);
 
   useEffect(() => {
     let timer;
@@ -41,24 +36,108 @@ const TypingTest = ({ username }) => {
     return () => clearInterval(timer);
   }, [isTyping]);
 
-  const handleChange = (e) => {
-    const value = e.target.value;
-    if (!isTyping && value.length > 0) setIsTyping(true);
-    if (value.length > para.length) return;
+  // Listen for key presses
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore modifier keys and function keys except Enter, Backspace, and Space
+      if (e.altKey || e.metaKey || e.key.length > 1) {
+        if (
+          e.key !== "Enter" &&
+          e.key !== "Backspace" &&
+          e.key !== " " &&
+          e.ctrlKey
+        ) {
+          e.preventDefault();
+          return;
+        }
+      }
 
-    setInput(value);
+      if (!isTyping && input.length === 0) setIsTyping(true);
 
-    let mistakeCount = 0;
-    for (let i = 0; i < value.length; i++) {
-      if (value[i] !== para[i]) mistakeCount++;
-    }
-    setMistakes(mistakeCount);
+      // Paste prevention
+      if (e.ctrlKey && e.key === "v") {
+        setMistakes("Cheating is not allowed!");
+        setWPM("error");
+        setCPM("error");
+        setIsTyping(false);
+        return;
+      }
 
-    if (value.length === para.length) {
-      setIsTyping(false);
-      saveResult(value.length, mistakeCount);
-    }
-  };
+      // Handle Backspace
+      if (e.key === "Backspace") {
+        if (input.length === 0) return;
+        setInput(input.slice(0, -1));
+        // Recalculate mistakes
+        let mistakeCount = 0;
+        for (let i = 0; i < input.length - 1; i++) {
+          if (input[i] !== para[i]) mistakeCount++;
+        }
+        setMistakes(mistakeCount);
+        return;
+      }
+
+      // Handle Enter for new line
+      if (e.key === "Enter") {
+        if (input.length >= para.length) return;
+        if (para[input.length] === "\n") {
+          setInput(input + "\n");
+        } else {
+          setInput(input + "\n");
+          setMistakes(mistakes + 1);
+        }
+        // If finished
+        if (input.length + 1 === para.length) {
+          setIsTyping(false);
+          saveResult(
+            input.length + 1,
+            para[input.length] === "\n" ? mistakes : mistakes + 1
+          );
+        }
+        return;
+      }
+
+      // Handle Space: only allow if next char is space
+      if (e.key === " ") {
+        if (input.length >= para.length) return;
+        if (para[input.length] === " ") {
+          setInput(input + " ");
+          // If finished
+          if (input.length + 1 === para.length) {
+            setIsTyping(false);
+            saveResult(input.length + 1, mistakes);
+          }
+        } else {
+          // Do nothing if next char is not space
+          return;
+        }
+        return;
+      }
+
+      // Only allow typing up to the paragraph length
+      if (input.length >= para.length) return;
+
+      let nextInput = input + e.key;
+      let mistakeCount = mistakes;
+
+      // Check if the key matches the next character
+      if (e.key !== para[input.length]) {
+        mistakeCount++;
+      }
+
+      setInput(nextInput);
+      setMistakes(mistakeCount);
+
+      // If finished
+      if (nextInput.length === para.length) {
+        setIsTyping(false);
+        saveResult(nextInput.length, mistakeCount);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line
+  }, [input, isTyping, para, mistakes]);
 
   const saveResult = async (charIndex, mistakeCount) => {
     const timeSpent = typingDuration / 60 || 1 / 60;
@@ -78,7 +157,7 @@ const TypingTest = ({ username }) => {
     };
 
     try {
-      await axios.post("http://localhost:5000/results", result);
+      await axios.post("https://typing-jv5m.onrender.com/results", result);
     } catch (err) {
       console.error("Error saving result:", err);
     }
@@ -90,10 +169,6 @@ const TypingTest = ({ username }) => {
     setIsTyping(false);
     setWPM(0);
     setCPM(0);
-    if (inpRef.current) {
-      inpRef.current.value = "";
-      inpRef.current.focus();
-    }
   };
 
   const handleFullReset = () => {
@@ -139,63 +214,42 @@ const TypingTest = ({ username }) => {
         </h2>
 
         <div className="flex flex-col items-center gap-4">
-          <div className="flex flex-col gap-1 justify-center text-lg font-mono select-none text-center">
-            {para.split("\n").map(
-              (line, lineIdx) => (
-                console.log(lineIdx, line),
-                (
-                  <div key={lineIdx} className="flex justify-center flex-wrap">
-                    {line.split("").map((char, charIdx) => {
-                      console.log(char, charIdx);
-                      if (char === " ") {
-                        return <span key={charIdx} className="w-4"></span>;
-                      }
-                      const globalIndex =
-                        para
-                          .split("\n")
-                          .slice(0, lineIdx)
-                          .reduce((acc, curr) => acc + curr.length + 1, 0) +
-                        charIdx;
+          <div className="w-full  flex flex-col gap-1 justify-center text-lg font-mono text-center  bg-white border border-gray-300 rounded px-4 py-2">
+            {para.split("\n").map((line, lineIdx) => (
+              <div key={lineIdx} className="flex justify-center flex-wrap">
+                {line.split("").map((char, charIdx) => {
+                  const globalIndex =
+                    para
+                      .split("\n")
+                      .slice(0, lineIdx)
+                      .reduce((acc, curr) => acc + curr.length + 1, 0) +
+                    charIdx;
 
-                      let colorClass = "";
-                      if (input.length > globalIndex) {
-                        colorClass =
-                          input[globalIndex] === char
-                            ? "text-green-600 border-b-2 border-green-400"
-                            : "text-red-600 border-b-2 border-red-400";
-                      } else if (input.length === globalIndex) {
-                        colorClass = "text-blue-600 border-b-2 border-blue-400";
-                      } else {
-                        colorClass = "text-gray-500";
-                      }
+                  let colorClass = "";
+                  if (input.length > globalIndex) {
+                    colorClass =
+                      input[globalIndex] === char
+                        ? "text-green-600 border-b-2 border-green-400"
+                        : "text-red-600 border-b-2 border-red-400";
+                  } else if (input.length === globalIndex) {
+                    colorClass = "text-blue-600 border-b-2 border-blue-400";
+                  } else {
+                    colorClass = "text-gray-500";
+                  }
 
-                      return (
-                        <span
-                          key={globalIndex}
-                          className={`char transition-all ${colorClass}`}
-                        >
-                          {char}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )
-              )
-            )}
+                  return (
+                    <span
+                      key={globalIndex}
+                      className={`char transition-all ${colorClass}`}
+                    >
+                      {char === " " ? "\u00A0" : char}
+                    </span>
+                  );
+                })}
+              </div>
+            ))}
           </div>
-
-          <input
-            type="text"
-            className="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition text-lg"
-            ref={inpRef}
-            value={input}
-            onChange={handleChange}
-            placeholder="Start typing here..."
-            maxLength={para.length}
-            autoComplete="off"
-          />
         </div>
-
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50 rounded p-4">
           <p>
             <span className="font-semibold text-purple-600">Mistakes:</span>{" "}
