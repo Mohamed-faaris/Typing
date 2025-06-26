@@ -39,8 +39,21 @@ const TypingTest = ({ username }) => {
   // Listen for key presses
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Prevent default for all handled keys
+      if (
+        e.key === " " ||
+        e.key === "Enter" ||
+        e.key === "Backspace" ||
+        (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey)
+      ) {
+        e.preventDefault();
+      }
+
+      // Ignore Shift key by itself (do nothing)
+      if (e.key === "Shift" || e.altKey) return;
+
       // Ignore modifier keys and function keys except Enter, Backspace, and Space
-      if (e.altKey || e.metaKey || e.key.length > 1) {
+      if (e.altKey || e.metaKey || e.key.length > 1 || e.capsLock) {
         if (
           e.key !== "Enter" &&
           e.key !== "Backspace" &&
